@@ -15,26 +15,27 @@ namespace PhoneBookApi.Controllers
     public class PersonsController : ControllerBase
     {
         private readonly AppDbContext _context;
-
+        private readonly PhoneBookService _phoneBookService;
         public PersonsController(AppDbContext context)
         {
             _context = context;
+            _phoneBookService = new PhoneBookService(_context);
         }
   
         [HttpGet("PersonsList")]
         public async Task<IActionResult> GetAllPersons()
         {
-            var persons = await new PhoneBookService(_context).ListPersonsAsync();
+            var persons = await _phoneBookService.ListPersonsAsync();
             return Ok(persons);
         }
 
         [HttpPost("PostPerson")]
         public async Task<IActionResult> PostPerson(PersonDto personDto)
         {
-            string hata= new PhoneBookService(_context).CheckCreatePerson(personDto);
+            string hata= _phoneBookService.CheckCreatePerson(personDto);
             if (!string.IsNullOrEmpty(hata)) {return BadRequest(hata); }
 
-            string sonuc = await new PhoneBookService(_context).CreatePersonAsync(personDto);
+            string sonuc = await _phoneBookService.CreatePersonAsync(personDto);
             if (string.IsNullOrEmpty(sonuc)) { return Ok(); }
             else { return BadRequest(sonuc); }
         }
@@ -44,87 +45,41 @@ namespace PhoneBookApi.Controllers
         [HttpDelete("DeletePerson/{id}")]
         public async Task<IActionResult> DeletePerson(Guid id)
         {
-            var person = await _context.PB_PERSON.FindAsync(id);
-            if (person == null)
-            {
-                return NotFound();
-            }
-
-            var personContact = await _context.PB_CONTACT_INFO.Where(x => x.PersonId == id).ToListAsync();
-            if (personContact.Count>0)
-            {
-                _context.PB_CONTACT_INFO.RemoveRange(personContact);
-            }
-
-            _context.PB_PERSON.Remove(person);
-            await _context.SaveChangesAsync();
-
-            return Ok();
+            string sonuc = await _phoneBookService.DeletePersonAndAllContactsAsync(id);
+            if (string.IsNullOrEmpty(sonuc)) { return Ok(); }
+            else { return BadRequest(sonuc); }
         }
 
 
         [HttpPost("PostContractInfo")]
-        public async Task<IActionResult> PostContractInfo(ContactInfoDto contactInfo)
+        public async Task<IActionResult> PostContractInfo(ContactInfoDto contactInfoDto)
         {
-            if (contactInfo == null)
-            {
-                return NotFound();
-            }
 
-            ContactInfo newContractInfo = new ContactInfo()
-            {
-                Id = Guid.NewGuid(),
-                PersonId = contactInfo.PersonId,
-                ContactType = contactInfo.ContactType,
-                Info = contactInfo.Info,
-            };
+            string hata = _phoneBookService.CheckCreateContactInfo(contactInfoDto);
+            if (!string.IsNullOrEmpty(hata)) { return BadRequest(hata); }
 
-
-
-            _context.PB_CONTACT_INFO.Add(newContractInfo);
-            await _context.SaveChangesAsync();
-
-            return Ok();
+            string sonuc = await _phoneBookService.CreateContactInfoAsync(contactInfoDto);
+            if (string.IsNullOrEmpty(sonuc)) { return Ok(); }
+            else { return BadRequest(sonuc); }
+            
         }
 
 
         [HttpDelete("DeleteContactInfo/{id}")]
         public async Task<IActionResult> DeleteContactInfo(Guid id)
         {
-            var contactInfo = await _context.PB_CONTACT_INFO.FindAsync(id);
-            if (contactInfo == null)
-            {
-                return NotFound();
-            }
+            string sonuc = await _phoneBookService.DeleteContactInfoAsync(id);
+            if (string.IsNullOrEmpty(sonuc)) { return Ok(); }
+            else { return BadRequest(sonuc); }
 
-            _context.PB_CONTACT_INFO.Remove(contactInfo);
-            await _context.SaveChangesAsync();
-
-            return Ok();
+           
         }
 
         [HttpGet("PersonsDetailList")]
         public async Task<IActionResult> GetAllPersonsDetails()
         {
             List<PersonInfo> liste = new();
-            var persons = await _context.PB_PERSON.ToListAsync();
-
-            foreach (var person in persons)
-            {
-                PersonInfo pi = new PersonInfo();
-                pi.Person=person;
-                var contacts = await _context.PB_CONTACT_INFO.Where(x=>x.PersonId==person.Id).ToListAsync();
-                if (contacts.Count>0)
-                {
-                  pi.ContactInfos = contacts;
-                }
-                else
-                {
-                    pi.ContactInfos = new List<ContactInfo>();
-                }
-                liste.Add(pi);
-               
-            }
+            liste=await _phoneBookService.ListPersonInfosAsync();
 
             return Ok(liste);
         }
