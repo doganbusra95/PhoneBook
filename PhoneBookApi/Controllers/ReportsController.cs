@@ -19,7 +19,7 @@ namespace PhoneBookApi.Controllers
         {
             _context = context;
         }
-        // GET: api/<PeersonsController>
+       
         [HttpGet("ReportsList")]
         public async Task<IActionResult> GetAllReports()
         {
@@ -30,7 +30,7 @@ namespace PhoneBookApi.Controllers
         [HttpPost("RequestReport")]
         public async Task<IActionResult> RequestReport()
         {
-            // Yeni rapor oluşturuluyor
+            
             var report = new Reports
             {
                 Id = Guid.NewGuid(),
@@ -41,7 +41,7 @@ namespace PhoneBookApi.Controllers
             _context.PB_REPORTS.Add(report);
             await _context.SaveChangesAsync();
 
-            // Asenkron rapor işleme başlatılıyor
+          
             _ = Task.Run(() => new ReportService(_context).GenerateReport(report.Id));
 
             return Ok(new { report.Id });

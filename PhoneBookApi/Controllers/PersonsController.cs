@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using PhoneBookApi.DContext;
 using PhoneBookApi.Models;
 using PhoneBookApi.Models.Dtos;
+using PhoneBookApi.Services;
 using System.Threading.Tasks;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -19,43 +20,23 @@ namespace PhoneBookApi.Controllers
         {
             _context = context;
         }
-        // GET: api/<PeersonsController>
+  
         [HttpGet("PersonsList")]
         public async Task<IActionResult> GetAllPersons()
         {
-            var persons= await _context.PB_PERSON.ToListAsync();
+            var persons = await new PhoneBookService(_context).ListPersonsAsync();
             return Ok(persons);
         }
 
-        //// GET api/<PeersonsController>/5
-        //[HttpGet("{id}")]
-        //public string Get(int id)
-        //{
-        //    return "value";
-        //}
-
         [HttpPost("PostPerson")]
-        public async Task<IActionResult> PostPerson(PersonDto person)
+        public async Task<IActionResult> PostPerson(PersonDto personDto)
         {
-            if (person==null)
-            {
-                return NotFound();
-            }
+            string hata= new PhoneBookService(_context).CheckCreatePerson(personDto);
+            if (!string.IsNullOrEmpty(hata)) {return BadRequest(hata); }
 
-            Person newPerson = new Person()
-            {
-                Id = Guid.NewGuid(),
-                FirstName=person.FirstName,
-                LastName=person.LastName,
-                Company=person.Company,
-            };
-
-
-      
-            _context.PB_PERSON.Add(newPerson);
-            await _context.SaveChangesAsync();
-
-            return Ok();
+            string sonuc = await new PhoneBookService(_context).CreatePersonAsync(personDto);
+            if (string.IsNullOrEmpty(sonuc)) { return Ok(); }
+            else { return BadRequest(sonuc); }
         }
 
        
